@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mapa de Incidentes</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@700&display=swap" rel="stylesheet">
+
+<style>
+#sidebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 260px;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 20px;
+  z-index: 1001;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 14px;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+  overflow-y: auto;
+  max-height: 100vh;
+}
+
+.sidebar-divider {
+  border: none;
+  height: 4px;
+  width: 100%;
+  margin-top: 6px;
+  background: rgba(165, 127, 44, 0.6);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 1);
+}
+
+.sidebar-header {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  text-align: center;
+}
+
+.sidebar-header h2 {
+  font-size: 25px;
+  margin: 0;
+  color: #e6d194;
+  font-weight: bold;
+  font-family: 'Noto Sans', sans-serif;
+}
+
+.sidebar-content {
+  margin-top: 100px;
+  width: 100%;
+}
+
+#sidebar h3 {
+  font-size: 16px;
+  padding: 0px;
+  color: #ffffff;
+}
+
+#sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+
+#sidebar li {
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.legend-circle {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid white;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+#map {
+  position: absolute;
+  top: 0;
+  left: 300px;
+  width: calc(100% - 300px);
+  height: 100vh;
+}
+
+#logo-container {
+  position: fixed;
+  bottom: 20px;
+  right: 10px;
+  z-index: 9999;
+  background: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+#logo-container img {
+  width: 300px;
+  height: auto;
+  max-width: 100vw;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+/* 📱 Ajustes para móviles */
+@media (max-width: 768px) {
+  #sidebar {
+    display: none !important;
+  }
+
+  #map {
+    left: 0 !important;
+    width: 100% !important;
+  }
+
+  #toggleSidebar {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar-content h3 {
+    font-size: 14px;
+  }
+
+  #sidebar li {
+    font-size: 12px;
+  }
+
+  canvas#graficoIncidentes,
+  canvas#graficoEstados {
+    max-width: 100%;
+    height: auto !important;
+  }
+
+  .sidebar-content {
+    margin-top: 80px;
+  }
+
+  .sidebar-header h2 {
+    font-size: 18px;
+    text-align: center;
+  }
+}
+</style>
+
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="sidebar">
+    <div class="sidebar-header">
+  <h2>Mapa de Incidentes Carreteros</h2>
+  <hr class="sidebar-divider" />
+</div>
+
+    <div class="sidebar-content">
+      <h3>Tipos de Incidente</h3>
+      <ul>
+  <li onclick="filtrarIncidentes('atropellamiento')">
+    <span class="legend-circle" style="background: #e74c3c; border-color: #e74c3c;"></span> Atropellamiento
+  </li>
+  <li onclick="filtrarIncidentes('choque')">
+    <span class="legend-circle" style="background: #2980b9; border-color: #2980b9;"></span> Choque
+  </li>
+  <li onclick="filtrarIncidentes('volcadura')">
+    <span class="legend-circle" style="background: #8e44ad; border-color: #8e44ad;"></span> Volcadura
+  </li>
+  <li onclick="filtrarIncidentes('derrape')">
+    <span class="legend-circle" style="background: #f39c12; border-color: #f39c12;"></span> Derrape
+  </li>
+  <li onclick="filtrarIncidentes('caidapasajero')">
+    <span class="legend-circle" style="background: #27ae60; border-color: #27ae60;"></span> Caída de Pasajero
+  </li>
+  <li onclick="filtrarIncidentes('otro')">
+    <span class="legend-circle" style="background: #7f8c8d; border-color: #7f8c8d;"></span> Otro
+  </li>
+</ul>
+
+<canvas id="graficoIncidentes" width="240" height="240" style="margin-top: 20px;"></canvas>
+
+ <button onclick="filtrarIncidentes(null)" style="margin-top: 10px; padding: 6px 12px; background: #e6d194; border: none; border-radius: 4px; color: #000; font-weight: bold; cursor: pointer;">
+    Mostrar Todos
+  </button>
+
+ <h3 style="margin-top: 30px; font-size: 15px; color: #e6d194;">Estados con más incidentes</h3>
+    <canvas id="graficoEstados" width="240" height="300" style="margin-top: 10px;"></canvas>
+<button id="btnHexgrid" onclick="toggleHexgrid()" style="margin-top: 20px; padding: 6px 12px; background: #f39c12; border: none; border-radius: 4px; color: #000; font-weight: bold; cursor: pointer;">
+  🔷 Activar Análisis Hexagonal
+</button>
+
+  <div style="height: 80px;"></div>
+</div>
+
+
+<!-- SCRIPT TURF -->
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>	
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+ 
+<script>
+
+
+    const map = L.map('map').setView([23.6345, -102.5528], 6);
+    // Capas separadas
+let capaHistoricos = L.layerGroup().addTo(map);
+let capaTiempoReal = L.layerGroup().addTo(map);
+
+    const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    });
+
+    const esriWorldImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles © Esri'
+    });
+
+    const googleSatellite = L.tileLayer('http://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+      attribution: 'Google Satellite',
+      maxZoom: 20
+    });
+
+    const googleHybrid = L.tileLayer('http://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+      attribution: 'Google Hybrid',
+      maxZoom: 20
+    });
+
+  const darkMatter = L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  {
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }
+);
+
+const baseMaps = {
+  "Carto Dark Matter": darkMatter,
+  "OpenStreetMap": openStreetMap,
+  "ESRI World Imagery": esriWorldImagery,
+  "Google Satellite": googleSatellite,
+  "Google Hybrid": googleHybrid
+};
+const overlayMaps = {
+  "Incidentes Históricos": capaHistoricos,
+  "Incidentes en Tiempo Real": capaTiempoReal
+};
+
+darkMatter.addTo(map);
+
+L.control.layers(baseMaps, overlayMaps, {
+  position: 'topright',
+  collapsed: false
+}).addTo(map);
+
+    const supabaseUrl = 'https://jjuqauxmkwqggvkayzxr.supabase.co';
+    const supabaseKey = 'sb_publishable_4EZ3TWp81gUYerPR9aNgJg_we2oIqAc'; 
+    const { createClient } = supabase;
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+let incidentesOriginales = [];
+let capaIncidentes = null;
+
+async function cargarActuales(){
+
+const { data, error } = await supabaseClient
+.from('reportes_accidentes')
+.select('*');
+
+if(data){
+  data.forEach(incidente=>{
+    const lat = incidente.latitud;
+const lon = incidente.lng;
+
+if (lat && lon) {
+
+L.circleMarker(
+  [parseFloat(lat), parseFloat(lon)],
+  {
+    radius:6,
+    color:"#ffffff",
+    weight:1,
+    fillColor:"#e74c3c",
+    fillOpacity:0.9
+  }
+)
+.addTo(capaTiempoReal)
+
+.bindPopup(`
+<b>${incidente.tipo_hecho || 'SIN TIPO'}</b><br>
+📄 Dictamen: ${incidente.dictamen_no || 'N/D'}<br>
+📅 Fecha: ${incidente.fecha || 'N/D'}<br>
+🕒 Hora: ${incidente.hora || 'N/D'}<br>
+📍 ${incidente.estado || ''} - ${incidente.municipio || ''}<br>
+🚗 Vehículos: ${incidente.num_vehiculos ?? 0}<br>
+🤕 Heridos: ${incidente.heridos ?? 0}<br>
+⚰ Fallecidos: ${incidente.fallecidos ?? 0}
+`);
+} }); } }
+
+   async function cargarIncidentes() {
+
+  const { data, error } = await supabaseClient
+   .from('accidentes_historicos_limpios')
+    .select('id, latitud, lng, tipo_hecho');
+
+  if (error) {
+    console.error("Error cargando históricos:", error);
+    return;
+  }
+
+  console.log("Datos históricos recibidos:", data);
+
+  const datosConvertidos = data.map(i => ({
+  id: i.id,
+  latitud: i.latitud,
+  longitud: i.lng,
+  tipohecho: i.tipo_hecho
+}));
+
+
+  if (error) {
+    console.error('Error al obtener incidentes:', error.message);
+    return;
+  }
+
+  console.log("Incidentes recibidos desde Supabase:", data);
+incidentesOriginales = datosConvertidos;
+mostrarEstadisticas(datosConvertidos);
+pintarIncidentes(datosConvertidos);         
+}
+
+function pintarIncidentes(datos){
+
+capaIncidentes = capaHistoricos;
+
+  datos.forEach(incidente => {
+
+    const lat = parseFloat(incidente.latitud);
+const lon = parseFloat(incidente.longitud);
+
+    if (!isNaN(lat) && !isNaN(lon)) {
+
+    const tipo = incidente.tipohecho?.toLowerCase().replace(/\s/g,'') || "otro";
+
+      const colores = {
+        atropellamiento: "#e74c3c",
+        choque: "#2980b9",
+        volcadura: "#8e44ad",
+        derrape: "#f39c12",
+        caidapasajero: "#27ae60",
+        otro: "#7f8c8d"
+      };
+
+      const color = colores[tipo] || colores.otro;
+
+      L.circleMarker([lat, lon], {
+        radius:5,
+        color:"#ffffff",
+        weight:1,
+        fillColor:color,
+        fillOpacity:0.8
+      })
+      .addTo(capaHistoricos)
+      .bindPopup(`<b>${incidente.tipohecho || 'SIN TIPO'}</b>`);
+
+    }
+
+  });
+
+}
+
+
+ // 🎯 Canal Realtime optimizado
+const canalRealtime = supabaseClient
+  .channel('realtime:reportes_accidentes')
+  .on(
+    'postgres_changes',
+    { event: 'INSERT', schema: 'public', table: 'reportes_accidentes' },
+    (payload) => {
+      console.log("🆕 Nuevo incidente recibido:", payload.new);
+
+      const incidente = payload.new;
+   const tipo = incidente.tipo_hecho?.toLowerCase().replace(/\s/g,'') || "otro";
+
+      const colores = {
+        atropellamiento: { color: "#e74c3c", fillColor: "#f1948a" },
+        choque: { color: "#2980b9", fillColor: "#85c1e9" },
+        volcadura: { color: "#8e44ad", fillColor: "#d2b4de" },
+        derrape: { color: "#f39c12", fillColor: "#f9e79f" },
+        caidapasajero: { color: "#27ae60", fillColor: "#a9dfbf" },
+        otro: { color: "#7f8c8d", fillColor: "#d5d8dc" }
+      };
+
+      const estilo = colores[tipo] || colores.otro;
+const lat = incidente.latitud;
+const lon = incidente.lng;
+
+if (lat && lon) {
+
+const marker = L.circleMarker(
+  [parseFloat(lat), parseFloat(lon)],
+  {
+    radius:6,
+    color:"#ffffff",
+    weight:1,
+    fillColor:"#e74c3c",
+    fillOpacity:0.9
+  }
+)
+.addTo(capaTiempoReal)
+.bindPopup(`
+<b>${incidente.tipo_hecho || 'SIN TIPO'}</b><br>
+📄 Dictamen: ${incidente.dictamen_no || 'N/D'}<br>
+📅 Fecha: ${incidente.fecha || 'N/D'}<br>
+🕒 Hora: ${incidente.hora || 'N/D'}<br>
+📍 ${incidente.estado || ''} - ${incidente.municipio || ''}<br>
+🚗 Vehículos: ${incidente.num_vehiculos ?? 0}<br>
+🤕 Heridos: ${incidente.heridos ?? 0}<br>
+⚰ Fallecidos: ${incidente.fallecidos ?? 0}
+`);
+;
+
+        console.log("📍 Incidente pintado en el mapa:", incidente);
+      }
+    }
+  )
+  .subscribe((status) => {
+    console.log("📡 Estado del canal realtime:", status);
+  });
+
+
+
+  // 🔹 Gráfico global para evitar múltiples instancias
+  let chartIncidentes;
+
+ function mostrarEstadisticas(data) {
+  if (!data || data.length === 0) {
+    console.warn("⚠️ No hay datos para generar estadísticas.");
+    return;
+  }
+    const conteo = {
+      atropellamiento: 0,
+      choque: 0,
+      volcadura: 0,
+      derrape: 0,
+      caidapasajero: 0,
+      otro: 0
+    };
+
+  data.forEach(({ tipohecho }) => {
+  const tipo = tipohecho?.toLowerCase().replace(/\s/g, '') || 'otro';
+  if (conteo[tipo] !== undefined) {
+    conteo[tipo]++;
+  } else {
+    conteo.otro++;
+  }
+});
+
+    const ctx = document.getElementById('graficoIncidentes').getContext('2d');
+
+    // 💥 Si ya existe, destruye la gráfica anterior
+    if (chartIncidentes) chartIncidentes.destroy();
+
+    chartIncidentes = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Atropellamiento', 'Choque', 'Volcadura', 'Derrape', 'Caída de Pasajero', 'Otro'],
+        datasets: [{
+          label: 'Cantidad de incidentes',
+          data: Object.values(conteo),
+          backgroundColor: ['#e74c3c', '#2980b9', '#8e44ad', '#f39c12', '#27ae60', '#7f8c8d'],
+          borderRadius: 6,
+          barThickness: 18
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.parsed.x} incidentes`
+            }
+          }
+        },
+        onClick: (evt, elements) => {
+          if (elements.length > 0) {
+            const tipoSeleccionado = chartIncidentes.data.labels[elements[0].index].toLowerCase().replace(/\s/g, '');
+            filtrarIncidentes(tipoSeleccionado);
+          }
+        },
+        scales: { x: { beginAtZero: true } }
+      }
+    });
+
+    // 🔹 Mostrar todos inicialmente
+    filtrarIncidentes(null);
+  }
+
+  // 🔹 Filtrar incidentes por tipo
+ function filtrarIncidentes(tipo) {
+
+  // 🧹 limpiar históricos antes de pintar
+  capaHistoricos.clearLayers();
+
+  let filtrados = incidentesOriginales;
+
+  if (tipo) {
+    filtrados = incidentesOriginales.filter(i => {
+      const t = i.tipohecho?.toLowerCase().replace(/\s/g, '') || 'otro';
+      return t === tipo;
+    });
+  }
+
+  filtrados.forEach(incidente => {
+
+    const lat = parseFloat(incidente.latitud);
+    const lon = parseFloat(incidente.longitud);
+
+    if (!isNaN(lat) && !isNaN(lon)) {
+
+      const tipo = incidente.tipohecho?.toLowerCase().replace(/\s/g, '') || "otro";
+
+      const colores = {
+        atropellamiento: { color: "#e74c3c", fillColor: "#f1948a" },
+        choque: { color: "#2980b9", fillColor: "#85c1e9" },
+        volcadura: { color: "#8e44ad", fillColor: "#d2b4de" },
+        derrape: { color: "#f39c12", fillColor: "#f9e79f" },
+        caidapasajero: { color: "#27ae60", fillColor: "#a9dfbf" },
+        otro: { color: "#7f8c8d", fillColor: "#d5d8dc" }
+      };
+
+      const estilo = colores[tipo] || colores.otro;
+
+      L.circleMarker([lat, lon], {
+        radius: 6,
+        color: estilo.color,
+        fillColor: estilo.fillColor,
+        fillOpacity: 1,
+        weight: 2
+      })
+      .bindPopup(`<b>${incidente.tipohecho || 'SIN TIPO'}</b>`)
+      .addTo(capaHistoricos);
+
+    }
+
+  });
+
+}
+
+  // 🔹 Hexgrid
+  // 🔹 Variables globales para el análisis hexagonal
+let tipoHexgridActivo = null; // null = todos los tipos
+let capaHexgrid;
+let contornoMexico;
+let hexActivo = false; // Estado del hexgrid (activo/inactivo)
+
+// 🔹 Cargar contorno simplificado de México
+fetch('https://raw.githubusercontent.com/EddBanda/contornomexico/refs/heads/main/contornosimp2.geojson')
+  .then(res => res.json())
+  .then(data => {
+    contornoMexico = data;
+    console.log("🗺️ Contorno de México cargado:", contornoMexico);
+  });
+
+// 🔹 Función que genera el hexgrid en base a incidentes cargados
+function generarHexgrid() {
+  if (!incidentesOriginales || incidentesOriginales.length === 0) {
+    alert("⚠️ No hay datos cargados para analizar.");
+    return;
+  }
+
+  if (!contornoMexico || !contornoMexico.features || contornoMexico.features.length === 0) {
+    alert("⚠️ El contorno de México aún no ha sido cargado.");
+    return;
+  }
+
+  if (capaHexgrid) {
+    map.removeLayer(capaHexgrid);
+  }
+
+  const puntosFiltrados = incidentesOriginales.filter(p => {
+    const tipo = p.tipohecho?.toLowerCase().replace(/\s/g, '') || "otro";
+    return tipoHexgridActivo === null || tipo === tipoHexgridActivo;
+  });
+
+  const puntos = puntosFiltrados
+    .filter(p => p.latitud && p.longitud)
+    .map(p => turf.point([parseFloat(p.longitud), parseFloat(p.latitud)]));
+
+  console.log("🔍 Total puntos válidos:", puntos.length);
+
+  const featureCollection = turf.featureCollection(puntos);
+
+  const mexicoPoligono = contornoMexico.features[0];
+  const bbox = turf.bbox(mexicoPoligono);
+
+  // 🔹 Ajusta aquí el tamaño del hexágono (en km)
+  const hexgrid = turf.hexGrid(bbox, 25, { units: 'kilometers' }); // Cambia a 5 si quieres más detalle
+
+  const hexRecortado = {
+    type: "FeatureCollection",
+    features: hexgrid.features
+      .map(h => turf.intersect(h, mexicoPoligono))
+      .filter(f => f)
+  };
+
+  const hexCount = turf.collect(hexRecortado, featureCollection, 'dummy', 'puntos');
+  hexCount.features.forEach(f => {
+    f.properties.count = f.properties.puntos ? f.properties.puntos.length : 0;
+  });
+
+  capaHexgrid = L.geoJSON(hexCount, {
+    style: feature => {
+      const n = feature.properties.count || 0;
+      return {
+        color: '#000',
+        weight: 0.3,
+        fillOpacity: 0.85,
+        fillColor: n > 10 ? '#800026' :
+                   n > 5  ? '#BD0026' :
+                   n > 2  ? '#E31A1C' :
+                   n > 0  ? '#FC4E2A' : 'transparent'
+      };
+    },
+    onEachFeature: (feature, layer) => {
+      const n = feature.properties.count;
+      if (n > 0) {
+        layer.bindPopup(`
+          <div style="font-family: Noto Sans; font-size: 13px;">
+            🔷 Accidentes en esta celda:<br><strong style="font-size: 16px;">${n}</strong>
+          </div>
+        `);
+      }
+    }
+  });
+
+  capaHexgrid.addTo(map);
+}
+
+// 🔹 Alternar el hexgrid al hacer clic en el botón
+function toggleHexgrid() {
+
+  const btn = document.getElementById("btnHexgrid");
+
+  if (hexActivo) {
+
+    if (capaHexgrid) map.removeLayer(capaHexgrid);
+
+    btn.innerText = "🔷 Activar Análisis Hexagonal";
+    hexActivo = false;
+
+  } else {
+
+    generarHexgrid();
+
+    btn.innerText = "❌ Desactivar Hexgrid";
+    hexActivo = true;
+
+  }
+
+}
+
+
+// 🔹 Función para definir estilo dinámico de la red vial según el mapa base
+function estiloRedVialPorBase(baseLayer) {
+  const isDark = baseLayer === darkMatter; // Detectar si es fondo oscuro
+
+  return function (feature) {
+    const esPeaje = feature.properties.PEAJE?.toLowerCase() === 'sí';
+    return {
+      color: esPeaje
+        ? (isDark ? '#e74c3c' : '#b91c1c') // 🔴 rojo peaje
+        : (isDark ? '#27ae60' : '#065f46'), // 🟢 verde libre
+      weight: 2,
+      opacity: 0.9
+    };
+  };
+}
+
+// 🔹 Cargar la Red Vial Federal
+fetch('https://raw.githubusercontent.com/EddBanda/geojsonsict/main/Red%20de%20Caminos.geojson')
+  .then(res => res.json())
+  .then(data => {
+    console.log("🛣️ Red vial cargada:", data);
+
+    capaRedVial = L.geoJSON(data, {
+      style: estiloRedVialPorBase(darkMatter), // estilo inicial con darkMatter
+      onEachFeature: function (feature, layer) {
+        const props = feature.properties;
+        const popupContent = `
+          <div style='font-family: Noto Sans; font-size: 13px; max-width: 280px;'>
+            <strong>Tramo:</strong> ${props.NOMBRE || 'Sin dato'}<br>
+            <strong>Tipo:</strong> ${props.TIPO_VIAL || 'Sin dato'}<br>
+            <strong>Peaje:</strong> ${props.PEAJE || 'N/A'}<br>
+            <strong>Condición:</strong> ${props.CONDICION || 'N/A'}<br>
+            <strong>Velocidad:</strong> ${props.VELOCIDAD || 'N/A'} km/h
+          </div>`;
+        layer.bindPopup(popupContent);
+      }
+    }).addTo(map);
+  });
+
+// 🔄 Actualizar estilo cuando se cambia el mapa base
+map.on('baselayerchange', function (e) {
+  if (capaRedVial) {
+    capaRedVial.setStyle(estiloRedVialPorBase(e.layer));
+  }
+});
+
+
+
+
+cargarIncidentes();
+cargarActuales();
+
+</script>
+
+</body>
+
+</html>
