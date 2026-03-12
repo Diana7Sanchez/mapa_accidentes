@@ -835,27 +835,34 @@ function filtrarIncidentes(tipo) {
 
 
 
-function filtrarTiempo(horas){
-
+function filtrarTiempo(horas) {
   capaHistoricos.clearLayers();
   capaTiempoReal.clearLayers();
 
- if(!horas){
+  // si no hay filtro de tiempo, mostramos todos
+  if (!horas) {
     pintarFiltros(incidentesTodos);
     mostrarEstadisticas(incidentesTodos);
     return;
-}
+  }
 
-const filtrados = incidentesTodos.filter(i => {
-    if(!i.tiempoReal) return false;  // ❌ esto excluye históricos
+  const ahora = new Date(); // ✅ definir "ahora"
+
+  const filtrados = incidentesTodos.filter(i => {
+    if (!i.tiempoReal) return false; // solo filtramos incidentes en tiempo real
+
+    // crear fecha completa del incidente
     const fechaIncidente = new Date(`${i.fecha} ${i.hora || "00:00:00"}`);
-    const diferenciaHoras = (ahora - fechaIncidente) / (1000*60*60);
+    if (isNaN(fechaIncidente)) return false; // descartar fechas inválidas
+
+    // diferencia en horas
+    const diferenciaHoras = (ahora - fechaIncidente) / (1000 * 60 * 60);
+
     return diferenciaHoras <= horas;
-});
+  });
 
   pintarFiltros(filtrados);
   mostrarEstadisticas(filtrados);
-
 }
 
 // 🔹 Hexgrid
