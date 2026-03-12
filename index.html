@@ -14,18 +14,15 @@
   left: 0;
   width: 260px;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.85);
-  color: white;
+  background: #611232;
+  color: #a57f2c;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   padding: 20px;
   z-index: 1001;
   font-family: 'Noto Sans', sans-serif;
   font-size: 14px;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
-  overflow-y: auto;
-  max-height: 100vh;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.4);
 }
 
 .sidebar-divider {
@@ -47,11 +44,9 @@
 .sidebar-header h2 {
   font-size: 25px;
   margin: 0;
-  color: #e6d194;
+  color: #a57f2c;
   font-weight: bold;
-  font-family: 'Noto Sans', sans-serif;
 }
-
 .sidebar-content {
   margin-top: 100px;
   width: 100%;
@@ -87,8 +82,8 @@
 #map {
   position: absolute;
   top: 0;
-  left: 300px;
-  width: calc(100% - 300px);
+  left: 260px;
+  width: calc(100% - 260px);
   height: 100vh;
 }
 
@@ -148,6 +143,32 @@
     font-size: 18px;
     text-align: center;
   }
+
+  .btnFiltro {
+  background: #4e0e28;
+  color: #f5e6b3;
+  border: 1px solid #a57f2c;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.btnFiltro:hover {
+  background: #7a1a40;
+  color: #ffffff;
+  border-color: #e6d194;
+}
+.leaflet-control-layers {
+  background:#611232;
+  color:#f5e6b3;
+  border:1px solid #a57f2c;
+}
+
+.leaflet-control-layers label {
+  color:#f5e6b3;
+}
 }
 </style>
 
@@ -156,48 +177,61 @@
   <div id="map"></div>
 
   <div id="sidebar">
-    <div class="sidebar-header">
-  <h2>Mapa de Incidentes Carreteros</h2>
-  <hr class="sidebar-divider" />
+  <div class="sidebar-header">
+    <h2>Mapa de Incidentes Carreteros</h2>
+    <hr class="sidebar-divider" />
+  </div>
+
+  <div class="sidebar-content">
+    <!-- Filtros por tipo de incidente -->
+    <h3>Tipos de Incidente</h3>
+    <div id="filtros-tipo" style="display:flex; flex-wrap:wrap; gap:5px;">
+     <button class="btnFiltro" style="color:#c0392b;border-color:#c0392b;" onclick="filtrarIncidentes('atropellamiento')">Atropellamiento</button>
+
+<button class="btnFiltro" style="color:#2471a3;border-color:#2471a3;" onclick="filtrarIncidentes('choque')">Choque</button>
+
+<button class="btnFiltro" style="color:#7d3c98;border-color:#7d3c98;" onclick="filtrarIncidentes('volcadura')">Volcadura</button>
+
+<button class="btnFiltro" style="color:#ca6f1e;border-color:#ca6f1e;" onclick="filtrarIncidentes('derrape')">Derrape</button>
+
+<button class="btnFiltro" style="color:#1e8449;border-color:#1e8449;" onclick="filtrarIncidentes('caidapasajero')">Caída Pasajero</button>
+
+<button class="btnFiltro" style="color:#566573;border-color:#566573;" onclick="filtrarIncidentes('otro')">Otro</button>
+
+<button class="btnFiltro" style="color:#611232;border-color:#a57f2c;" onclick="filtrarIncidentes(null)">Mostrar Todos</button>
+    </div>
+    <h3 style="margin-top:15px;">Incidentes recientes</h3>
+
+<div style="display:flex; flex-wrap:wrap; gap:5px;">
+  <button class="btnFiltro" style="color:#2980b9;border-color:#2980b9;" onclick="filtrarTiempo(1)">Última hora</button>
+
+<button class="btnFiltro" style="color:#8e44ad;border-color:#8e44ad;" onclick="filtrarTiempo(12)">Últimas 12h</button>
+
+<button class="btnFiltro" style="color:#ca6f1e;border-color:#ca6f1e;" onclick="filtrarTiempo(24)">Últimas 24h</button>
+
+<button class="btnFiltro" style="color:#611232;border-color:#a57f2c;" onclick="filtrarTiempo(null)">Todos</button>
+</div>
+    <!-- Filtro por Estado -->
+    <h3 style="margin-top:15px;">Filtrar por Estado</h3>
+    <select id="filtroEstado" onchange="filtrarPorEstado(this.value)" style="width:100%; padding:5px;">
+      <option value="">Todos</option>
+    </select>
+
+    <!-- Gráfico incidentes -->
+    <canvas id="graficoIncidentes" width="240" height="240" style="margin-top: 20px;"></canvas>
+
+    <!-- Gráfico estados con más incidentes -->
+    <h3 style="margin-top:20px; font-size:15px; color:#e6d194;">Estados con más incidentes</h3>
+    <canvas id="graficoEstados" width="240" height="300" style="margin-top:10px;"></canvas>
+
+    <!-- Hexgrid y centrar mapa -->
+    <button id="btnHexgrid" onclick="toggleHexgrid()" style="margin-top: 10px;">🔷 Activar Hexgrid</button>
+    <button onclick="map.setView([23.6345, -102.5528], 6)" style="margin-top:10px;">🌎 Centrar México</button>
+
+    <div style="height: 80px;"></div>
+  </div>
 </div>
 
-    <div class="sidebar-content">
-      <h3>Tipos de Incidente</h3>
-      <ul>
-  <li onclick="filtrarIncidentes('atropellamiento')">
-    <span class="legend-circle" style="background: #e74c3c; border-color: #e74c3c;"></span> Atropellamiento
-  </li>
-  <li onclick="filtrarIncidentes('choque')">
-    <span class="legend-circle" style="background: #2980b9; border-color: #2980b9;"></span> Choque
-  </li>
-  <li onclick="filtrarIncidentes('volcadura')">
-    <span class="legend-circle" style="background: #8e44ad; border-color: #8e44ad;"></span> Volcadura
-  </li>
-  <li onclick="filtrarIncidentes('derrape')">
-    <span class="legend-circle" style="background: #f39c12; border-color: #f39c12;"></span> Derrape
-  </li>
-  <li onclick="filtrarIncidentes('caidapasajero')">
-    <span class="legend-circle" style="background: #27ae60; border-color: #27ae60;"></span> Caída de Pasajero
-  </li>
-  <li onclick="filtrarIncidentes('otro')">
-    <span class="legend-circle" style="background: #7f8c8d; border-color: #7f8c8d;"></span> Otro
-  </li>
-</ul>
-
-<canvas id="graficoIncidentes" width="240" height="240" style="margin-top: 20px;"></canvas>
-
- <button onclick="filtrarIncidentes(null)" style="margin-top: 10px; padding: 6px 12px; background: #e6d194; border: none; border-radius: 4px; color: #000; font-weight: bold; cursor: pointer;">
-    Mostrar Todos
-  </button>
-
- <h3 style="margin-top: 30px; font-size: 15px; color: #e6d194;">Estados con más incidentes</h3>
-    <canvas id="graficoEstados" width="240" height="300" style="margin-top: 10px;"></canvas>
-<button id="btnHexgrid" onclick="toggleHexgrid()" style="margin-top: 20px; padding: 6px 12px; background: #f39c12; border: none; border-radius: 4px; color: #000; font-weight: bold; cursor: pointer;">
-  🔷 Activar Análisis Hexagonal
-</button>
-
-  <div style="height: 80px;"></div>
-</div>
 
 
 <!-- SCRIPT TURF -->
@@ -250,17 +284,58 @@ const baseMaps = {
   "Google Hybrid": googleHybrid
 };
 const overlayMaps = {
-  "Incidentes Históricos": capaHistoricos,
-  "Incidentes en Tiempo Real": capaTiempoReal
+  "Incidentes en Tiempo Real": capaTiempoReal,
+  "Incidentes Históricos": capaHistoricos
 };
 
 openStreetMap.addTo(map);
 
-L.control.layers(baseMaps, overlayMaps, {
+L.control.layers(null, overlayMaps, {
   position: 'topright',
-  collapsed: false
+  collapsed:false
 }).addTo(map);
 
+L.control.layers(baseMaps, null, {
+  position: 'bottomright',
+  collapsed:false
+}).addTo(map);
+
+// 🔹 Detectar cambio de capas para actualizar gráfica
+map.on('overlayadd', function(e) {
+
+  if (e.name === "Incidentes en Tiempo Real") {
+
+    const soloTiempoReal = incidentesTodos.filter(i => i.tiempoReal);
+    mostrarEstadisticas(soloTiempoReal);
+
+  }
+
+  if (e.name === "Incidentes Históricos") {
+
+    const soloHistoricos = incidentesTodos.filter(i => !i.tiempoReal);
+    mostrarEstadisticas(soloHistoricos);
+
+  }
+
+});
+
+map.on('overlayremove', function(e) {
+
+  if (e.name === "Incidentes en Tiempo Real") {
+
+    const soloHistoricos = incidentesTodos.filter(i => !i.tiempoReal);
+    mostrarEstadisticas(soloHistoricos);
+
+  }
+
+  if (e.name === "Incidentes Históricos") {
+
+    const soloTiempoReal = incidentesTodos.filter(i => i.tiempoReal);
+    mostrarEstadisticas(soloTiempoReal);
+
+  }
+
+});
     const supabaseUrl = 'https://jjuqauxmkwqggvkayzxr.supabase.co';
     const supabaseKey = 'sb_publishable_4EZ3TWp81gUYerPR9aNgJg_we2oIqAc'; 
     const { createClient } = supabase;
@@ -268,33 +343,155 @@ L.control.layers(baseMaps, overlayMaps, {
 
 let incidentesOriginales = [];
 let capaIncidentes = null;
+let incidentesTodos = []; // 🚨 Nuevo array que unifica históricos + actuales
+
+// Filtrar por estado
+function filtrarPorEstado(estado) {
+
+  let filtrados = incidentesTodos;
+
+  if (estado) {
+    filtrados = incidentesTodos.filter(i => i.estado === estado);
+  }
+
+  pintarFiltros(filtrados);
+  mostrarEstadisticas(filtrados);
+
+}
+
+// Actualiza mapa con filtros
+function pintarFiltros(datos) {
+
+  // Limpiar capas
+  capaHistoricos.clearLayers();
+  capaTiempoReal.clearLayers();
+
+  // 🔹 Separar y unir arrays: primero tiempo real, luego históricos
+  const tiempoReal = datos.filter(d => !!d.tiempoReal); // fuerza booleano
+  const historicos = datos.filter(d => !d.tiempoReal);
+  const datosOrdenados = [...tiempoReal, ...historicos];
+
+  datosOrdenados.forEach(incidente => {
+
+    const lat = parseFloat(incidente.latitud);
+    const lon = parseFloat(incidente.longitud);
+
+    if (!isNaN(lat) && !isNaN(lon)) {
+
+      const tipo = incidente.tipohecho?.toLowerCase().replace(/\s/g,'') || "otro";
+
+      const colores = {
+        atropellamiento: { color:"#e74c3c", fillColor:"#f1948a" },
+        choque: { color:"#2980b9", fillColor:"#85c1e9" },
+        volcadura: { color:"#8e44ad", fillColor:"#d2b4de" },
+        derrape: { color:"#f39c12", fillColor:"#f9e79f" },
+        caidapasajero: { color:"#27ae60", fillColor:"#a9dfbf" },
+        otro: { color:"#7f8c8d", fillColor:"#d5d8dc" }
+      };
+
+      const estilo = colores[tipo] || colores.otro;
+
+      // Definir a qué capa va el marcador
+      const capaDestino = incidente.tiempoReal ? capaTiempoReal : capaHistoricos;
+
+      // 🔹 Crear contenido del popup
+      const popupContenido = `
+<b>${incidente.tipohecho || 'SIN TIPO'}</b><br>
+📄 Dictamen: ${incidente.dictamen_no || 'N/D'}<br>
+📅 Fecha: ${incidente.fecha || 'N/D'}<br>
+🕒 Hora: ${incidente.hora || 'N/D'}<br>
+📍 ${incidente.estado || ''} - ${incidente.municipio || ''}<br>
+👮 Supervisó: ${incidente.superviso || 'N/D'}<br>
+🚗 Vehículos involucrados: ${incidente.vehiculos ?? 0}<br>
+🤕 Heridos: ${incidente.heridos ?? 0}<br>
+⚰ Fallecidos: ${incidente.fallecidos ?? 0}<br>
+❗ Posible causa: ${incidente.causa || 'N/D'}
+`;
+
+      // 🔹 Crear marcador en el mapa
+      L.circleMarker([lat, lon], {
+        radius: 6,
+        color: estilo.color,
+        fillColor: estilo.fillColor,
+        fillOpacity: 1,
+        weight: 2
+      })
+      .bindPopup(popupContenido)
+      .addTo(capaDestino);
+
+    }
+
+  });
+
+}
+
+// Llenar dropdown de estados
+function llenarEstados() {
+
+  const estados = [...new Set(
+    incidentesTodos
+      .map(i => i.estado?.trim())
+      .filter(e => e && e !== "")
+  )].sort();
+
+  const select = document.getElementById('filtroEstado');
+
+  select.innerHTML = '<option value="">Todos</option>';
+
+  estados.forEach(e => {
+    const option = document.createElement('option');
+    option.value = e;
+    option.textContent = e;
+    select.appendChild(option);
+  });
+
+  console.log("Estados detectados:", estados);
+}
+
 
 async function cargarActuales(){
 
-const { data, error } = await supabaseClient
-.from('reportes_accidentes')
-.select('*');
+  const { data, error } = await supabaseClient
+  .from('reportes_accidentes')
+  .select('*');
 
-if(data){
-  data.forEach(incidente=>{
-    const lat = incidente.latitud;
-const lon = incidente.lng;
-
-if (lat && lon) {
-
-L.circleMarker(
-  [parseFloat(lat), parseFloat(lon)],
-  {
-    radius:6,
-    color:"#ffffff",
-    weight:1,
-    fillColor:"#e74c3c",
-    fillOpacity:0.9
+  if (error) {
+    console.error("Error cargando actuales:", error);
+    return;
   }
-)
-.addTo(capaTiempoReal)
 
-.bindPopup(`
+  if(data){
+
+    data.forEach(incidente => {
+
+      const lat = incidente.latitud;
+      const lon = incidente.lng;
+
+      if (lat && lon) {
+
+        // guardar en array global
+       incidentesTodos.push({
+  tipohecho: incidente.tipo_hecho,
+  latitud: incidente.latitud,
+  longitud: incidente.lng,
+  estado: incidente.estado,
+  fecha: incidente.fecha,
+  hora: incidente.hora,
+  tiempoReal: true
+});
+
+        L.circleMarker(
+          [parseFloat(lat), parseFloat(lon)],
+          {
+            radius:6,
+            color:"#ffffff",
+            weight:1,
+            fillColor:"#e74c3c",
+            fillOpacity:0.9
+          }
+        )
+        .addTo(capaTiempoReal)
+        .bindPopup(`
 <b>${incidente.tipo_hecho || 'SIN TIPO'}</b><br>
 📄 Dictamen: ${incidente.dictamen_no || 'N/D'}<br>
 📅 Fecha: ${incidente.fecha || 'N/D'}<br>
@@ -304,52 +501,74 @@ L.circleMarker(
 🤕 Heridos: ${incidente.heridos ?? 0}<br>
 ⚰ Fallecidos: ${incidente.fallecidos ?? 0}
 `);
-} }); } }
+// Unificar y reordenar: primero tiempo real
+incidentesTodos = [
+  ...incidentesTodos.filter(i => i.tiempoReal),
+  ...incidentesTodos.filter(i => !i.tiempoReal)
+];
+
+pintarFiltros(incidentesTodos);
+mostrarEstadisticas(incidentesTodos);
+llenarEstados();
+      }
+
+    });
+
+  }
+
+  // 🔹 ACTUALIZAR DROPDOWN Y GRÁFICA
+  llenarEstados();
+  mostrarEstadisticas(incidentesTodos);
+
+}
 
    async function cargarIncidentes() {
 
-  const { data, error } = await supabaseClient
-   .from('accidentes_historicos_limpios')
-    .select('id, latitud, lng, tipo_hecho');
+ const { data, error } = await supabaseClient
+.from('accidentes_historicos_limpios')
+.select('id, latitud, lng, tipo_hecho, estado');
 
-  if (error) {
-    console.error("Error cargando históricos:", error);
-    return;
-  }
+if (error) {
+  console.error('Error al obtener incidentes:', error.message);
+  return;
+}
 
-  console.log("Datos históricos recibidos:", data);
+console.log("Datos históricos recibidos:", data);
+ 
 
-  const datosConvertidos = data.map(i => ({
+const datosConvertidos = data.map(i => ({
   id: i.id,
   latitud: i.latitud,
   longitud: i.lng,
-  tipohecho: i.tipo_hecho
+  tipohecho: i.tipo_hecho,
+  estado: i.estado,
+  tiempoReal: false
 }));
 
 
-  if (error) {
-    console.error('Error al obtener incidentes:', error.message);
-    return;
-  }
-
   console.log("Incidentes recibidos desde Supabase:", data);
 incidentesOriginales = datosConvertidos;
-mostrarEstadisticas(datosConvertidos);
-pintarIncidentes(datosConvertidos);         
+
+
+// Actualizar array unificado
+incidentesTodos = [...incidentesOriginales]; // al inicio solo históricos
+mostrarEstadisticas(incidentesTodos);
+pintarIncidentes(datosConvertidos);  
+llenarEstados();       
 }
 
 function pintarIncidentes(datos){
 
-capaIncidentes = capaHistoricos;
+  capaIncidentes = capaHistoricos;
 
   datos.forEach(incidente => {
 
     const lat = parseFloat(incidente.latitud);
-const lon = parseFloat(incidente.longitud);
+    const lon = parseFloat(incidente.longitud);
 
     if (!isNaN(lat) && !isNaN(lon)) {
 
-    const tipo = incidente.tipohecho?.toLowerCase().replace(/\s/g,'') || "otro";
+      const tipo = incidente.tipohecho?.toLowerCase().replace(/\s/g,'') || "otro";
 
       const colores = {
         atropellamiento: "#e74c3c",
@@ -389,6 +608,16 @@ const canalRealtime = supabaseClient
       console.log("🆕 Nuevo incidente recibido:", payload.new);
 
       const incidente = payload.new;
+incidentesTodos.push({
+  tipohecho: incidente.tipo_hecho,
+  latitud: incidente.latitud,
+  longitud: incidente.lng,
+  estado: incidente.estado,
+  fecha: incidente.fecha,
+  tiempoReal: true
+});
+mostrarEstadisticas(incidentesTodos);
+llenarEstados();
    const tipo = incidente.tipo_hecho?.toLowerCase().replace(/\s/g,'') || "otro";
 
       const colores = {
@@ -410,9 +639,8 @@ const marker = L.circleMarker(
   [parseFloat(lat), parseFloat(lon)],
   {
     radius:6,
-    color:"#ffffff",
-    weight:1,
-    fillColor:"#e74c3c",
+    color: estilo.color,
+    fillColor: estilo.fillColor,
     fillOpacity:0.9
   }
 )
@@ -439,131 +667,178 @@ const marker = L.circleMarker(
 
 
 
-  // 🔹 Gráfico global para evitar múltiples instancias
-  let chartIncidentes;
+// 🔹 Gráfico global para evitar múltiples instancias
+let chartIncidentes;
 
- function mostrarEstadisticas(data) {
+function mostrarEstadisticas(data) {
+
   if (!data || data.length === 0) {
     console.warn("⚠️ No hay datos para generar estadísticas.");
     return;
   }
-    const conteo = {
-      atropellamiento: 0,
-      choque: 0,
-      volcadura: 0,
-      derrape: 0,
-      caidapasajero: 0,
-      otro: 0
-    };
+
+  const conteo = {
+    atropellamiento: 0,
+    choque: 0,
+    volcadura: 0,
+    derrape: 0,
+    caidapasajero: 0,
+    otro: 0
+  };
 
   data.forEach(({ tipohecho }) => {
-  const tipo = tipohecho?.toLowerCase().replace(/\s/g, '') || 'otro';
-  if (conteo[tipo] !== undefined) {
-    conteo[tipo]++;
-  } else {
-    conteo.otro++;
-  }
-});
+ let tipo = tipohecho?.toLowerCase() || "otro";
 
-    const ctx = document.getElementById('graficoIncidentes').getContext('2d');
+if (tipo.includes("atrop")) tipo = "atropellamiento";
+else if (tipo.includes("choque")) tipo = "choque";
+else if (tipo.includes("volc")) tipo = "volcadura";
+else if (tipo.includes("derrape")) tipo = "derrape";
+else if (tipo.includes("caida")) tipo = "caidapasajero";
+else tipo = "otro";
+    if (conteo[tipo] !== undefined) {
+      conteo[tipo]++;
+    } else {
+      conteo.otro++;
+    }
+  });
 
-    // 💥 Si ya existe, destruye la gráfica anterior
-    if (chartIncidentes) chartIncidentes.destroy();
+  const ctx = document.getElementById('graficoIncidentes').getContext('2d');
 
-    chartIncidentes = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['Atropellamiento', 'Choque', 'Volcadura', 'Derrape', 'Caída de Pasajero', 'Otro'],
-        datasets: [{
-          label: 'Cantidad de incidentes',
-          data: Object.values(conteo),
-          backgroundColor: ['#e74c3c', '#2980b9', '#8e44ad', '#f39c12', '#27ae60', '#7f8c8d'],
-          borderRadius: 6,
-          barThickness: 18
-        }]
+  if (chartIncidentes) chartIncidentes.destroy();
+
+  chartIncidentes = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Atropellamiento','Choque','Volcadura','Derrape','Caída de Pasajero','Otro'],
+      datasets: [{
+        label: 'Cantidad de incidentes',
+        data: Object.values(conteo),
+        backgroundColor: ['#e74c3c','#2980b9','#8e44ad','#f39c12','#27ae60','#7f8c8d'],
+        borderRadius: 6,
+        barThickness: 18
+      }]
+    },
+    options: {
+  indexAxis: 'y',
+  responsive: true,
+
+  plugins:{
+    legend:{ display:false },
+    tooltip:{
+      callbacks:{
+        label: ctx => {
+          const total = data.length;
+          const count = ctx.parsed.x;
+          const pct = ((count/total)*100).toFixed(1);
+          return `${count} incidentes (${pct}%)`;
+        }
       },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: ctx => `${ctx.parsed.x} incidentes`
-            }
-          }
-        },
-        onClick: (evt, elements) => {
-          if (elements.length > 0) {
-            const tipoSeleccionado = chartIncidentes.data.labels[elements[0].index].toLowerCase().replace(/\s/g, '');
-            filtrarIncidentes(tipoSeleccionado);
-          }
-        },
-        scales: { x: { beginAtZero: true } }
-      }
-    });
+      titleColor:"#611232",
+      bodyColor:"#611232",
+      backgroundColor:"#f5e6b3"
+    }
+  },
 
-    // 🔹 Mostrar todos inicialmente
-    filtrarIncidentes(null);
+  onClick:(evt,elements)=>{
+    if(elements.length>0){
+      const tipoSeleccionado =
+        chartIncidentes.data.labels[elements[0].index]
+        .toLowerCase().replace(/\s/g,'');
+
+      filtrarIncidentes(tipoSeleccionado);
+    }
+  },
+
+  scales:{
+    x:{
+      beginAtZero:true,
+      ticks:{ color:"#f5e6b3" },
+      grid:{ color:"rgba(255,255,255,0.15)" }
+    },
+    y:{
+      ticks:{ color:"#f5e6b3" },
+      grid:{ display:false }
+    }
   }
 
-  // 🔹 Filtrar incidentes por tipo
- function filtrarIncidentes(tipo) {
+  }
 
-  // 🧹 limpiar históricos antes de pintar
+  }); // ← cierra new Chart
+
+
+
+} // ← 🔴 AQUÍ se cierra mostrarEstadisticas
+
+// 🔹 FILTRO DE INCIDENTES
+// 🔹 FILTRO DE INCIDENTES
+function filtrarIncidentes(tipo) {
+
   capaHistoricos.clearLayers();
+  capaTiempoReal.clearLayers();
 
-  let filtrados = incidentesOriginales;
+  let filtrados = incidentesTodos;
 
   if (tipo) {
-    filtrados = incidentesOriginales.filter(i => {
-      const t = i.tipohecho?.toLowerCase().replace(/\s/g, '') || 'otro';
-      return t === tipo;
+
+    filtrados = incidentesTodos.filter(i => {
+
+      let tipoNormalizado = i.tipohecho?.toLowerCase() || "otro";
+
+      if (tipoNormalizado.includes("atrop")) tipoNormalizado = "atropellamiento";
+      else if (tipoNormalizado.includes("choque")) tipoNormalizado = "choque";
+      else if (tipoNormalizado.includes("volc")) tipoNormalizado = "volcadura";
+      else if (tipoNormalizado.includes("derrape")) tipoNormalizado = "derrape";
+      else if (tipoNormalizado.includes("caida")) tipoNormalizado = "caidapasajero";
+      else tipoNormalizado = "otro";
+
+      return tipoNormalizado === tipo;
+
     });
+
   }
 
-  filtrados.forEach(incidente => {
+  pintarFiltros(filtrados);
+  mostrarEstadisticas(filtrados);
+}
 
-    const lat = parseFloat(incidente.latitud);
-    const lon = parseFloat(incidente.longitud);
 
-    if (!isNaN(lat) && !isNaN(lon)) {
 
-      const tipo = incidente.tipohecho?.toLowerCase().replace(/\s/g, '') || "otro";
+function filtrarTiempo(horas){
 
-      const colores = {
-        atropellamiento: { color: "#e74c3c", fillColor: "#f1948a" },
-        choque: { color: "#2980b9", fillColor: "#85c1e9" },
-        volcadura: { color: "#8e44ad", fillColor: "#d2b4de" },
-        derrape: { color: "#f39c12", fillColor: "#f9e79f" },
-        caidapasajero: { color: "#27ae60", fillColor: "#a9dfbf" },
-        otro: { color: "#7f8c8d", fillColor: "#d5d8dc" }
-      };
+  capaHistoricos.clearLayers();
+  capaTiempoReal.clearLayers();
 
-      const estilo = colores[tipo] || colores.otro;
+  if(!horas){
+    pintarFiltros(incidentesTodos);
+    mostrarEstadisticas(incidentesTodos);
+    return;
+  }
 
-      L.circleMarker([lat, lon], {
-        radius: 6,
-        color: estilo.color,
-        fillColor: estilo.fillColor,
-        fillOpacity: 1,
-        weight: 2
-      })
-      .bindPopup(`<b>${incidente.tipohecho || 'SIN TIPO'}</b>`)
-      .addTo(capaHistoricos);
+  const ahora = new Date();
 
-    }
+  const filtrados = incidentesTodos.filter(i => {
+
+    if(!i.tiempoReal) return false;
+
+    const fechaIncidente = new Date(`${i.fecha} ${i.hora || "00:00:00"}`);
+
+    const diferenciaHoras =
+      (ahora - fechaIncidente) / (1000 * 60 * 60);
+
+    return diferenciaHoras <= horas;
 
   });
 
+  pintarFiltros(filtrados);
+  mostrarEstadisticas(filtrados);
+
 }
 
-  // 🔹 Hexgrid
-  // 🔹 Variables globales para el análisis hexagonal
-let tipoHexgridActivo = null; // null = todos los tipos
+// 🔹 Hexgrid
+let tipoHexgridActivo = null;
 let capaHexgrid;
 let contornoMexico;
-let hexActivo = false; // Estado del hexgrid (activo/inactivo)
+let hexActivo = false;
 
 // 🔹 Cargar contorno simplificado de México
 fetch('https://raw.githubusercontent.com/EddBanda/contornomexico/refs/heads/main/contornosimp2.geojson')
@@ -720,9 +995,19 @@ map.on('baselayerchange', function (e) {
 
 
 
+async function iniciarMapa(){
 
-cargarIncidentes();
-cargarActuales();
+  await cargarIncidentes();
+  await cargarActuales();
+
+  pintarFiltros(incidentesTodos);
+
+  llenarEstados();
+  mostrarEstadisticas(incidentesTodos);
+
+}
+
+iniciarMapa();
 
 </script>
 
